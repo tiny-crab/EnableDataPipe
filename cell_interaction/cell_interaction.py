@@ -19,14 +19,19 @@ the first element of the list is the cell type of cell ID 0.
 def cell_type_interactions(n_cell_types, cell_classifications, cell_neighbors):
     output = np.zeros(shape=(n_cell_types, n_cell_types))
 
+    if not cell_classifications:
+        raise ValueError("Cannot compute interaction matrix with empty classification argument")
+
+    if n_cell_types <= max(cell_classifications):
+        raise ValueError("Fewer cell types declared than exist in classifications")
+
     for cell_dict in cell_neighbors:
         cell_id = cell_dict["cell_id"]
         cell_type = cell_classifications[cell_id]
         neighbor_types = [cell_classifications[neighbor] for neighbor in cell_dict["neighbors"]]
         for neighbor_type in neighbor_types:
-            # surely there's a more pythonic way for this
             output[cell_type, neighbor_type] += 1
-            # interactions between cells of the same type will doubled due to dataset symmetry
+            # interactions between cells of the same type will doubled due to input symmetry
             if neighbor_type is not cell_type:
                 output[neighbor_type, cell_type] += 1
 
@@ -62,6 +67,8 @@ the first element of the list is the cell type of cell ID 0.
 
 
 def pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors):
+    # TODO add input validation and refactored error messages in calculations
+
     interaction_matrix = cell_type_interactions(n_cell_types, cell_classifications, cell_neighbors)
     cell_type_edges = interaction_matrix / 2  # reduce number of edges to non-directional connections
     total_edges = 0
@@ -82,5 +89,5 @@ def pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors):
     # This would mean that actual_frequency or theo_occurrence is 0.
     # Not sure if this would ever happen to real, and perfect, data, since I assume a cell will always have neighbors.
     # However, if the image data is messy (likely), this could throw errors here. Is this the best behavior, to alert
-    # the build to unclean data? Or should it be fault-tolerant here?
+    # the build to unclean data via an exception? Or should it be fault-tolerant here?
     return np.log(actual_frequency / theo_cooccurrence)
