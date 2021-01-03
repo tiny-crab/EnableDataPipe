@@ -2,8 +2,7 @@ import numpy as np
 
 
 """
-Returns an array containing how many times a cell of type X
-interacted with a cell of type Y. 
+Returns an array containing how many times a cell of type X interacted with a cell of type Y. 
 Dimensions: [n_cell_types, n_cell_types]
 
 
@@ -17,7 +16,7 @@ the first element of the list is the cell type of cell ID 0.
 """
 
 
-def cell_type_matrix(n_cell_types, cell_classifications, cell_neighbors):
+def cell_type_interactions(n_cell_types, cell_classifications, cell_neighbors):
     output = np.zeros(shape=(n_cell_types, n_cell_types))
 
     for cell_dict in cell_neighbors:
@@ -26,8 +25,10 @@ def cell_type_matrix(n_cell_types, cell_classifications, cell_neighbors):
         neighbor_types = [cell_classifications[neighbor] for neighbor in cell_dict["neighbors"]]
         for neighbor_type in neighbor_types:
             # surely there's a more pythonic way for this
-            output[cell_type][neighbor_type] = output[cell_type][neighbor_type] + 1
-            output[neighbor_type][cell_type] = output[neighbor_type][cell_type] + 1
+            output[cell_type, neighbor_type] += 1
+            # interactions between cells of the same type will doubled due to dataset symmetry
+            if neighbor_type is not cell_type:
+                output[neighbor_type, cell_type] += 1
 
     return output
 
@@ -60,5 +61,26 @@ the first element of the list is the cell type of cell ID 0.
 """
 
 
-def pairwise_logodds_ratio_matrix(n_cell_types, cell_classifications, cell_neighbors):
-    pass
+def pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors):
+    interaction_matrix = cell_type_interactions(n_cell_types, cell_classifications, cell_neighbors)
+    cell_type_edges = interaction_matrix / 2  # reduce number of edges to non-directional connections
+    total_edges = 0
+    for i in range(n_cell_types):
+        edges_of_type = cell_type_edges[i, i:]
+        total_edges += np.sum(edges_of_type)
+
+    actual_frequency = cell_type_edges / total_edges
+
+    proportion_by_type = np.sum(cell_type_edges, axis=0) / total_edges
+
+    theo_cooccurrence = np.zeros(shape=(n_cell_types, n_cell_types))
+    for i in range(n_cell_types):
+        for j in range(n_cell_types):
+            theo_cooccurrence[i, j] = proportion_by_type[i] * proportion_by_type[j]
+
+    # TODO what should behavior be in the case of division by 0?
+    # This would mean that actual_frequency or theo_occurrence is 0.
+    # Not sure if this would ever happen to real, and perfect, data, since I assume a cell will always have neighbors.
+    # However, if the image data is messy (likely), this could throw errors here. Is this the best behavior, to alert
+    # the build to unclean data? Or should it be fault-tolerant here?
+    return np.log(actual_frequency / theo_cooccurrence)
