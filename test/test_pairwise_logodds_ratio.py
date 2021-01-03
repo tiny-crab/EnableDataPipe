@@ -7,7 +7,6 @@ class MyTestCase(unittest.TestCase):
     def test_small_set(self):
         n_cell_types = 2
         cell_classifications = [0, 0, 0, 1, 1, 1]
-        # assuming neighbor dictionary is always symmetrical
         cell_neighbors = [
             {"cell_id": 0, "neighbors": [3, 1]},
             {"cell_id": 1, "neighbors": [4, 0]},
@@ -17,44 +16,22 @@ class MyTestCase(unittest.TestCase):
             {"cell_id": 5, "neighbors": [2]},
         ]
 
-        # expected cell type interactions
-        #     0     1
-        # 0 [ 2 ] [ 6 ]
-        # 1 [ 6 ] [ 2 ]
-
-        # expected cell type edges
-        #     0     1
-        # 0 [ 1 ] [ 3 ]
-        # 1 [ 3 ] [ 1 ]
-
-        # expected total edges = 5
-
-        # expected actual frequency
-        #      0       1
-        # 0 [ 0.2 ] [ 0.6 ]
-        # 1 [ 0.6 ] [ 0.2 ]
-
-        # expected proportion by type
-        #      0       1
-        # 0 [ 0.5 ] [ 0.5 ]
-
-        # expected theo cooccurrence
-        #      0        1
-        # 0 [ 0.25 ] [ 0.25 ]
-        # 1 [ 0.25 ] [ 0.25 ]
-
-        # expected logodds
-        #       0         1
-        # 0 [  NaN  ] [ 0.301 ]
-        # 1 [ 0.301 ] [  NaN  ]
-
-        expected = np.array([
-            [0, 6],
-            [6, 0],
+        expected_actual_frequency = np.array([
+            [0.2, 0.6],
+            [0.6, 0.2],
         ])
+
+        expected_theo_cooccurrence = np.array([
+            [0.64, 0.64],
+            [0.64, 0.64],
+        ])
+
+        # TODO I don't like deriving this value by "reprogramming" similar functionality in the unit test
+        # However, I prefer it over hardcoding floats that I've taken directly from a sample execution
+        expected = np.log(expected_actual_frequency / expected_theo_cooccurrence)
         actual = pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors)
 
-        diff = np.testing.assert_array_equal(actual, expected)
+        diff = np.testing.assert_array_almost_equal(actual, expected, decimal=5)
         self.assertIsNone(diff)
 
 
