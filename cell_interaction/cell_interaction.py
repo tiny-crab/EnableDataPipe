@@ -67,9 +67,14 @@ the first element of the list is the cell type of cell ID 0.
 
 
 def pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors):
-    # TODO add input validation and refactored error messages in calculations
+    if not cell_classifications:
+        raise ValueError("Cannot compute interaction matrix with empty classification argument")
+
+    if n_cell_types <= max(cell_classifications):
+        raise ValueError("Fewer cell types declared than exist in classifications")
 
     interaction_matrix = cell_type_interactions(n_cell_types, cell_classifications, cell_neighbors)
+
     cell_type_edges = interaction_matrix / 2  # reduce number of edges to non-directional connections
     total_edges = 0
     for i in range(n_cell_types):
@@ -86,8 +91,12 @@ def pairwise_logodds_ratio(n_cell_types, cell_classifications, cell_neighbors):
             theo_cooccurrence[i, j] = proportion_by_type[i] * proportion_by_type[j]
 
     # TODO what should behavior be in the case of division by 0?
-    # This would mean that actual_frequency or theo_occurrence is 0.
+    # This would mean that theo_occurrence is 0.
     # Not sure if this would ever happen to real, and perfect, data, since I assume a cell will always have neighbors.
     # However, if the image data is messy (likely), this could throw errors here. Is this the best behavior, to alert
     # the build to unclean data via an exception? Or should it be fault-tolerant here?
+    zero_index = np.where(theo_cooccurrence == 0)
+    if zero_index[0].size or zero_index[1].size:
+        raise ValueError(f"Theoretical co-occurrence of {zero_index} is 0.")
+
     return np.log(actual_frequency / theo_cooccurrence)
